@@ -1,0 +1,21 @@
+# 每天定时探活 Worker（公开仓免费不限分钟；私有仓计入每月 2,000 分钟）
+# 用法：把仓库设为公开，WORKER_URL 改成你的 Worker 地址，推到 GitHub 即可。
+# 不需要任何 Secret。跑挂了只在 Actions 日志里留痕，不发告警、不花钱。
+name: daily-healthcheck
+
+on:
+  schedule:
+    - cron: "0 1 * * *" # 每天 09:00 北京时间
+  workflow_dispatch:
+
+jobs:
+  healthcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Worker /health
+        run: |
+          set -e
+          code=$(curl -s -o /tmp/health.json -w "%{http_code}" "${WORKER_URL:-https://ai-studio-worker.example.workers.dev}/health")
+          echo "HTTP $code"
+          cat /tmp/health.json
+          test "$code" = "200"
