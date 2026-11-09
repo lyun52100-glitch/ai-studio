@@ -1,0 +1,26 @@
+# 每周 1 次 OpenRouter 免费模型冒烟：只用 1 次请求（50 次/天预算内）
+# 用法：仓库 Settings → Secrets → Actions，新建 OPENROUTER_API_KEY（只放 key，不放其他）。
+# 不要在公开仓的日志里打印 key；本工作流只打印模型回答的前 200 字符。
+name: weekly-openrouter-smoke
+
+on:
+  schedule:
+    - cron: "0 2 * * 1" # 每周一 10:00 北京时间
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call OpenRouter :free model once
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          set -e
+          test -n "$OPENROUTER_API_KEY" || { echo "OPENROUTER_API_KEY secret 未设置，跳过"; exit 0; }
+          curl -s https://openrouter.ai/api/v1/chat/completions \
+            -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"model":"openrouter/free","messages":[{"role":"user","content":"用一句话回答：1+1 等于几？"}],"max_tokens":50}' \
+            -o /tmp/smoke.json
+          python3 -c "import json; d=json.load(open('/tmp/smoke.json')); print((d['choices'][0]['message']['content'][:200] if 'choices' in d else d))"
